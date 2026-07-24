@@ -1,6 +1,6 @@
 cask "marknote" do
-  version "0.7.1"
-  sha256 "65a49572555441e220f061dd11208c049ed4e3694819a7808d4e200fdb6c64ee"
+  version "0.7.2"
+  sha256 "1bd4637ee2adbba8082d9c9723314486d653c7817e726650c2c80e5b82c71266"
 
   url "https://github.com/Cacao-s/marknote-official/releases/download/v#{version}/MarkNote_#{version}_universal.dmg"
   name "marknote"
