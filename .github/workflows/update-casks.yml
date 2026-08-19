@@ -1,0 +1,56 @@
+name: Update Casks
+
+on:
+  schedule:
+    # 06:00 UTC daily (14:00 Asia/Taipei)
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-casks
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check upstream releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: make all
+
+      - name: Commit and push
+        env:
+          # Pushed via the checkout-persisted credentials, which use this token.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          CHANGED=$(git diff --name-only -- Casks Formula)
+          if [ -z "$CHANGED" ]; then
+            echo "No updates."
+            exit 0
+          fi
+
+          SUMMARY=$(for f in $CHANGED; do
+            name=$(basename "$f" .rb)
+            version=$(grep -E '^[[:space:]]*version "' "$f" | sed -E 's/.*"([^"]+)".*/\1/')
+            printf '%s %s\n' "$name" "$version"
+          done)
+
+          if [ "$(echo "$SUMMARY" | wc -l)" -eq 1 ]; then
+            MESSAGE="chore: bump $(echo "$SUMMARY" | sed -E 's/ / to /')"
+          else
+            MESSAGE=$(printf 'chore: bump casks\n\n%s\n' "$(echo "$SUMMARY" | sed -E 's/ / to /')")
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- $CHANGED
+          git commit -m "$MESSAGE"
+          git push

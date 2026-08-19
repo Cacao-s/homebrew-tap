@@ -10,7 +10,19 @@ if [ -z "$REPO" ] || [ -z "$CASK_FILE" ]; then
 fi
 
 # 1. Get latest version from GitHub
-LATEST_VERSION=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+# Authenticate when a token is available: anonymous API calls are limited to
+# 60 requests/hour per IP, which shared CI runners exhaust easily.
+AUTH_HEADER=()
+if [ -n "$GITHUB_TOKEN" ]; then
+    AUTH_HEADER=(-H "Authorization: Bearer $GITHUB_TOKEN")
+fi
+
+LATEST_VERSION=$(curl -s "${AUTH_HEADER[@]}" "https://api.github.com/repos/$REPO/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+
+if [ -z "$LATEST_VERSION" ]; then
+    echo "Error: Could not resolve latest release for $REPO"
+    exit 1
+fi
 VERSION_CLEAN=${LATEST_VERSION#v}
 
 CURRENT_VERSION=$(grep -E '^[[:space:]]*version "' "$CASK_FILE" | sed -E 's/.*"([^"]+)".*/\1/')
